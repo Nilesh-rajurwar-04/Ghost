@@ -2,17 +2,12 @@
 
 # =========================================
 # Production Dockerfile for Ghost
-# Two targets:
-#   core → server + production deps
-#   full → core + built admin
+# CORE STAGE ONLY (Recommended for DevSecOps Project)
 # =========================================
 
 ARG NODE_VERSION=22.18.0
 
-# =========================================
-# CORE STAGE
-# =========================================
-FROM node:${NODE_VERSION}-bookworm-slim AS core
+FROM node:${NODE_VERSION}-bookworm-slim
 
 ARG GHOST_BUILD_VERSION=""
 ENV NODE_ENV=production
@@ -39,9 +34,9 @@ RUN groupmod -g 1001 node && \
 WORKDIR /home/ghost
 
 # -----------------------------------------
-# Copy full project except admin build
+# Copy complete project
 # -----------------------------------------
-COPY --exclude=core/built/admin . .
+COPY . .
 
 # -----------------------------------------
 # Enable pnpm + disable husky hooks
@@ -87,16 +82,3 @@ ENV database_connection_filename=/home/ghost/content/data/ghost.db
 EXPOSE 2368
 
 CMD ["node", "index.js"]
-
-# =========================================
-# FULL STAGE (WITH ADMIN BUILD)
-# =========================================
-FROM core AS full
-
-USER root
-
-COPY core/built/admin core/built/admin
-
-RUN chown -R nobody:nogroup core/built/admin
-
-USER ghost
