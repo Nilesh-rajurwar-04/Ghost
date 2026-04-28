@@ -47,14 +47,6 @@ jobs:
       - name: Build Ghost Production
         run: pnpm build:production
 
-      - name: Upload Build Artifacts
-        uses: actions/upload-artifact@v4
-        with:
-          name: build-artifacts
-          path: |
-            ghost/core
-            apps/admin/dist
-
   # ===================================
   # TEST STAGE
   # ===================================
@@ -74,9 +66,6 @@ jobs:
 
       - name: Install PNPM Globally
         run: npm install -g pnpm
-
-      - name: Verify PNPM
-        run: pnpm --version
 
       - name: Install Dependencies
         run: pnpm install --frozen-lockfile
@@ -104,14 +93,11 @@ jobs:
       - name: Install PNPM Globally
         run: npm install -g pnpm
 
-      - name: Verify PNPM
-        run: pnpm --version
-
       - name: Install Dependencies
         run: pnpm install --frozen-lockfile
 
       # -------------------------------
-      # SNYK DEPENDENCY SCAN
+      # SNYK SECURITY SCAN
       # -------------------------------
       - name: Run Snyk Security Scan
         uses: snyk/actions/node@master
@@ -121,13 +107,13 @@ jobs:
           args: --all-projects --severity-threshold=high --detection-depth=4
 
       # -------------------------------
-      # BUILD DOCKER IMAGE
+      # DOCKER IMAGE BUILD
       # -------------------------------
       - name: Build Docker Image
         run: docker build -t ghost:${{ github.sha }} .
 
       # -------------------------------
-      # TRIVY IMAGE SCAN
+      # TRIVY VULNERABILITY SCAN
       # -------------------------------
       - name: Run Trivy Vulnerability Scan
         uses: aquasecurity/trivy-action@master
@@ -167,7 +153,7 @@ jobs:
             ${{ secrets.DOCKER_USERNAME }}/ghost:${{ github.sha }}
 
   # ===================================
-  # DEPLOY TO STAGING
+  # DEPLOY STAGING
   # ===================================
   deploy-staging:
     name: Deploy to Staging
@@ -176,17 +162,11 @@ jobs:
     if: github.ref == 'refs/heads/develop'
 
     steps:
-      - name: Checkout Code
-        uses: actions/checkout@v4
-
       - name: Deploy to Staging
-        run: |
-          echo "Deploying Ghost to staging environment..."
-          # Example:
-          # kubectl apply -f kubernetes/staging/
+        run: echo "Deploying to staging..."
 
   # ===================================
-  # DEPLOY TO PRODUCTION
+  # DEPLOY PRODUCTION
   # ===================================
   deploy-production:
     name: Deploy to Production
@@ -194,21 +174,6 @@ jobs:
     runs-on: ubuntu-latest
     if: github.ref == 'refs/heads/main'
 
-    environment:
-      name: production
-      url: https://ghost.yourdomain.com
-
     steps:
-      - name: Checkout Code
-        uses: actions/checkout@v4
-
       - name: Deploy to Production
-        run: |
-          echo "Deploying Ghost to production with zero downtime..."
-          # Example:
-          # kubectl apply -f kubernetes/production/
-
-      - name: Smoke Test
-        run: |
-          echo "Running smoke tests..."
-          echo "Production deployment verified successfully"
+        run: echo "Deploying to production..."
