@@ -27,32 +27,26 @@ jobs:
       - name: Checkout Code
         uses: actions/checkout@v4
 
-      # Setup Node.js
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
           node-version: 20
 
-      # Install PNPM globally
       - name: Install PNPM Globally
         run: npm install -g pnpm
 
-      # Verify environment
       - name: Verify Environment
         run: |
           node --version
           npm --version
           pnpm --version
 
-      # Install dependencies
       - name: Install Dependencies
         run: pnpm install --frozen-lockfile
 
-      # Build Ghost production only
       - name: Build Ghost Production
         run: pnpm build:production
 
-      # Upload build artifacts
       - name: Upload Build Artifacts
         uses: actions/upload-artifact@v4
         with:
@@ -87,7 +81,6 @@ jobs:
       - name: Install Dependencies
         run: pnpm install --frozen-lockfile
 
-      # Simplified test stage for project demo
       - name: Test Stage Validation
         run: echo "Unit tests skipped for Secure CI/CD project demo"
 
@@ -134,20 +127,13 @@ jobs:
         run: docker build -t ghost:${{ github.sha }} .
 
       # -------------------------------
-      # TRIVY IMAGE SCAN
+      # TRIVY SECURITY SCAN
       # -------------------------------
       - name: Run Trivy Vulnerability Scan
         uses: aquasecurity/trivy-action@master
         with:
           image-ref: ghost:${{ github.sha }}
-          format: sarif
-          output: trivy-results.sarif
-
-      - name: Upload Trivy Results
-        uses: github/codeql-action/upload-sarif@v3
-        if: always()
-        with:
-          sarif_file: trivy-results.sarif
+          format: table
 
   # ===================================
   # DOCKER BUILD + PUSH
