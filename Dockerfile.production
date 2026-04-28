@@ -76,4 +76,7 @@ ENV database_connection_filename=/home/ghost/content/data/ghost.db
 
 EXPOSE 2368
 
-CMD ["node", "index.js"]
+# -----------------------------------------
+# Correct Ghost startup path
+# -----------------------------------------
+CMD ["node", "ghost/core/index.js"]
