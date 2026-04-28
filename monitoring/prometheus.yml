@@ -2,15 +2,34 @@ global:
   scrape_interval: 15s
   evaluation_interval: 15s
 
+rule_files:
+  - "alert.rules.yml"
+
+alerting:
+  alertmanagers:
+    - static_configs:
+        - targets:
+            - alertmanager:9093
+
 scrape_configs:
-  - job_name: 'prometheus'
-    static_configs:
-      - targets: ['localhost:9090']
 
-  - job_name: 'ghost'
+  # =====================================
+  # PROMETHEUS SELF MONITORING
+  # =====================================
+  - job_name: "prometheus"
     static_configs:
-      - targets: ['localhost:2368']
+      - targets: ["prometheus:9090"]
 
-  - job_name: 'node'
+  # =====================================
+  # GHOST APPLICATION
+  # =====================================
+  - job_name: "ghost"
     static_configs:
-      - targets: ['localhost:9100']
+      - targets: ["ghost-app:2368"]
+
+  # =====================================
+  # NODE EXPORTER (OPTIONAL)
+  # =====================================
+  - job_name: "node"
+    static_configs:
+      - targets: ["node-exporter:9100"]
