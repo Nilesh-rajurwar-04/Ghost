@@ -99,18 +99,18 @@ jobs:
           username: ${{ secrets.DOCKER_USERNAME }}
           password: ${{ secrets.DOCKER_PASSWORD }}
 
-      # --------------------------------
-      # BUILD IMAGE USING PRODUCTION DOCKERFILE
-      # --------------------------------
+      # ===================================
+      # BUILD IMAGE USING Dockerfile.production
+      # ===================================
       - name: Build Docker Image
         run: |
           docker build \
           -t ${{ secrets.DOCKER_USERNAME }}/ghost-app:latest \
           -f Dockerfile.production .
 
-      # --------------------------------
+      # ===================================
       # TRIVY SECURITY SCAN
-      # --------------------------------
+      # ===================================
       - name: Trivy Scan
         uses: aquasecurity/trivy-action@master
         with:
@@ -118,9 +118,9 @@ jobs:
           format: 'table'
           exit-code: '0'
 
-      # --------------------------------
+      # ===================================
       # PUSH IMAGE TO DOCKER HUB
-      # --------------------------------
+      # ===================================
       - name: Push Docker Image
         run: |
           docker push ${{ secrets.DOCKER_USERNAME }}/ghost-app:latest
