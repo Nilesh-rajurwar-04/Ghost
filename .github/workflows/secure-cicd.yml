@@ -27,21 +27,22 @@ jobs:
       - name: Checkout Code
         uses: actions/checkout@v4
 
-      # Install PNPM first
-      - name: Setup PNPM
-        uses: pnpm/action-setup@v4
-        with:
-          standalone: true
-
-      # Then setup Node.js
+      # Setup Node FIRST without pnpm cache
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
           node-version: 22
 
-      # Verify PNPM is available
+      # Install PNPM using npm (most reliable fix)
+      - name: Install PNPM Globally
+        run: npm install -g pnpm
+
+      # Verify PNPM installation
       - name: Verify PNPM
-        run: pnpm --version
+        run: |
+          pnpm --version
+          node --version
+          npm --version
 
       # Install dependencies
       - name: Install Dependencies
@@ -51,7 +52,7 @@ jobs:
       - name: Build Project
         run: pnpm build
 
-      # Upload build artifacts
+      # Upload artifacts
       - name: Upload Build Artifacts
         uses: actions/upload-artifact@v4
         with:
@@ -73,15 +74,13 @@ jobs:
       - name: Checkout Code
         uses: actions/checkout@v4
 
-      - name: Setup PNPM
-        uses: pnpm/action-setup@v4
-        with:
-          standalone: true
-
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
           node-version: 22
+
+      - name: Install PNPM Globally
+        run: npm install -g pnpm
 
       - name: Verify PNPM
         run: pnpm --version
@@ -104,15 +103,13 @@ jobs:
       - name: Checkout Code
         uses: actions/checkout@v4
 
-      - name: Setup PNPM
-        uses: pnpm/action-setup@v4
-        with:
-          standalone: true
-
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
           node-version: 22
+
+      - name: Install PNPM Globally
+        run: npm install -g pnpm
 
       - name: Verify PNPM
         run: pnpm --version
@@ -137,7 +134,7 @@ jobs:
         run: docker build -t ghost:${{ github.sha }} .
 
       # -------------------------------
-      # TRIVY IMAGE SCAN
+      # TRIVY SECURITY SCAN
       # -------------------------------
       - name: Run Trivy Vulnerability Scan
         uses: aquasecurity/trivy-action@master
@@ -198,7 +195,7 @@ jobs:
 
       - name: Deploy to Staging
         run: |
-          echo "Deploying Ghost to staging environment..."
+          echo "Deploying Ghost to staging..."
           # Example:
           # kubectl apply -f kubernetes/staging/
 
@@ -221,11 +218,11 @@ jobs:
 
       - name: Deploy to Production
         run: |
-          echo "Deploying Ghost to production with zero downtime..."
+          echo "Deploying Ghost to production..."
           # Example:
           # kubectl apply -f kubernetes/production/
 
       - name: Smoke Test
         run: |
           echo "Running smoke tests..."
-          echo "Production deployment verified successfully"
+          echo "Production deployment successful"
