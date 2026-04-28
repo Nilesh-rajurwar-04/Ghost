@@ -118,7 +118,7 @@ jobs:
         env:
           SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
         with:
-          args: --severity-threshold=high
+          args: --all-projects --severity-threshold=high --detection-depth=4
 
       # -------------------------------
       # BUILD DOCKER IMAGE
@@ -127,7 +127,7 @@ jobs:
         run: docker build -t ghost:${{ github.sha }} .
 
       # -------------------------------
-      # TRIVY SECURITY SCAN
+      # TRIVY IMAGE SCAN
       # -------------------------------
       - name: Run Trivy Vulnerability Scan
         uses: aquasecurity/trivy-action@master
