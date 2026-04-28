@@ -26,7 +26,7 @@ spec:
       containers:
         - name: ghost
 
-          image: your-docker-username/ghost-app:latest
+          image: nileshrajurwar9403/ghost-app:latest
 
           imagePullPolicy: Always
 
