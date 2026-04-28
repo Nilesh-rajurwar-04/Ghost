@@ -1,5 +1,10 @@
 # syntax=docker/dockerfile:1-labs@sha256:7eca9451d94f9b8ad22e44988b92d595d3e4d65163794237949a8c3413fbed5d
 
+# =========================================
+# Dockerfile.production
+# Secure Production Dockerfile for Ghost
+# =========================================
+
 ARG NODE_VERSION=22.18.0
 
 FROM node:${NODE_VERSION}-bookworm-slim
@@ -8,6 +13,9 @@ ARG GHOST_BUILD_VERSION=""
 ENV NODE_ENV=production
 ENV GHOST_BUILD_VERSION=${GHOST_BUILD_VERSION}
 
+# -----------------------------------------
+# Install required system packages
+# -----------------------------------------
 RUN apt-get update && \
     apt-get install -y --no-install-recommends \
     libjemalloc2 \
@@ -16,35 +24,52 @@ RUN apt-get update && \
     python3 && \
     rm -rf /var/lib/apt/lists/*
 
+# -----------------------------------------
+# Create secure non-root user
+# -----------------------------------------
 RUN groupmod -g 1001 node && \
     usermod -u 1001 node && \
     adduser --disabled-password --gecos "" -u 1000 ghost
 
 WORKDIR /home/ghost
 
+# -----------------------------------------
+# Copy complete project
+# -----------------------------------------
 COPY . .
 
+# -----------------------------------------
+# Enable pnpm + disable husky hooks
+# -----------------------------------------
 RUN corepack enable
 
 ENV HUSKY=0
 ENV CI=true
 
+# -----------------------------------------
+# Install production dependencies safely
+# -----------------------------------------
 RUN --mount=type=cache,target=/root/.local/share/pnpm/store,id=pnpm-store \
     pnpm install --prod --prefer-offline --ignore-scripts
 
+# -----------------------------------------
+# Create required folders safely
+# -----------------------------------------
 RUN mkdir -p /home/ghost/content/data && \
     mkdir -p /home/ghost/content/logs && \
     mkdir -p /home/ghost/default && \
     mkdir -p /home/ghost/log && \
-    cp -R content base_content && \
-    cp -R content/themes/casper default/casper && \
-    ([ -d content/themes/source ] && cp -R content/themes/source default/source || true) && \
     chown ghost:ghost /home/ghost && \
-    chown -R nobody:nogroup /home/ghost/* && \
-    chown -R ghost:ghost /home/ghost/content /home/ghost/log
+    chown -R ghost:ghost /home/ghost/content /home/ghost/log /home/ghost/default
 
+# -----------------------------------------
+# Switch to secure non-root user
+# -----------------------------------------
 USER ghost
 
+# -----------------------------------------
+# Runtime environment
+# -----------------------------------------
 ENV LD_PRELOAD=libjemalloc.so.2
 ENV database__client=sqlite3
 ENV database_connection_filename=/home/ghost/content/data/ghost.db
