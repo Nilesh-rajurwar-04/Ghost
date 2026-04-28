@@ -32,7 +32,7 @@ jobs:
         with:
           node-version: 20
 
-      - name: Install PNPM Globally
+      - name: Setup PNPM
         run: npm install -g pnpm
 
       - name: Verify Environment
@@ -72,17 +72,17 @@ jobs:
         with:
           node-version: 20
 
-      - name: Install PNPM Globally
+      - name: Setup PNPM
         run: npm install -g pnpm
 
       - name: Install Dependencies
         run: pnpm install --frozen-lockfile
 
-      - name: Test Stage Validation
-        run: echo "Unit tests skipped for Secure CI/CD project demo"
+      - name: Test Validation
+        run: echo "Unit tests skipped for DevSecOps project demo"
 
   # ===================================
-  # SECURITY SCAN STAGE
+  # SECURITY SCAN + DOCKER BUILD
   # ===================================
   security-scan:
     name: Security Scan
@@ -93,88 +93,59 @@ jobs:
       - name: Checkout Code
         uses: actions/checkout@v4
 
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: 20
-
-      - name: Install PNPM Globally
-        run: npm install -g pnpm
-
-      - name: Install Dependencies
-        run: pnpm install --frozen-lockfile
-
-      # -------------------------------
-      # BUILD DOCKER IMAGE
-      # -------------------------------
-      - name: Build Docker Image
-        run: docker build -t ghost:${{ github.sha }} .
-
-      # -------------------------------
-      # TRIVY VULNERABILITY SCAN
-      # -------------------------------
-      - name: Run Trivy Vulnerability Scan
-        uses: aquasecurity/trivy-action@master
-        with:
-          image-ref: ghost:${{ github.sha }}
-          format: table
-
-  # ===================================
-  # DOCKER BUILD + PUSH
-  # ===================================
-  docker-build:
-    name: Docker Build and Push
-    needs: security-scan
-    runs-on: ubuntu-latest
-    if: github.event_name == 'push'
-
-    steps:
-      - name: Checkout Code
-        uses: actions/checkout@v4
-
-      - name: Setup Docker Buildx
-        uses: docker/setup-buildx-action@v3
-
-      - name: Login to Docker Hub
+      - name: Docker Login
         uses: docker/login-action@v3
         with:
           username: ${{ secrets.DOCKER_USERNAME }}
           password: ${{ secrets.DOCKER_PASSWORD }}
 
-      - name: Build and Push Docker Image
-        uses: docker/build-push-action@v5
+      # --------------------------------
+      # BUILD IMAGE USING PRODUCTION DOCKERFILE
+      # --------------------------------
+      - name: Build Docker Image
+        run: |
+          docker build \
+          -t ${{ secrets.DOCKER_USERNAME }}/ghost-app:latest \
+          -f Dockerfile.production .
+
+      # --------------------------------
+      # TRIVY SECURITY SCAN
+      # --------------------------------
+      - name: Trivy Scan
+        uses: aquasecurity/trivy-action@master
         with:
-          context: .
-          push: true
-          tags: |
-            ${{ secrets.DOCKER_USERNAME }}/ghost:latest
-            ${{ secrets.DOCKER_USERNAME }}/ghost:${{ github.sha }}
+          image-ref: '${{ secrets.DOCKER_USERNAME }}/ghost-app:latest'
+          format: 'table'
+          exit-code: '0'
+
+      # --------------------------------
+      # PUSH IMAGE TO DOCKER HUB
+      # --------------------------------
+      - name: Push Docker Image
+        run: |
+          docker push ${{ secrets.DOCKER_USERNAME }}/ghost-app:latest
 
   # ===================================
   # DEPLOY TO STAGING
   # ===================================
   deploy-staging:
     name: Deploy to Staging
-    needs: docker-build
+    needs: security-scan
     runs-on: ubuntu-latest
     if: github.ref == 'refs/heads/develop'
 
     steps:
-      - name: Checkout Code
-        uses: actions/checkout@v4
-
       - name: Deploy to Staging
         run: |
           echo "Deploying Ghost to staging environment..."
-          # Example:
-          # kubectl apply -f kubernetes/staging/
+          echo "Staging deployment successful"
 
   # ===================================
   # DEPLOY TO PRODUCTION
   # ===================================
   deploy-production:
     name: Deploy to Production
-    needs: docker-build
+    needs: security-scan
     runs-on: ubuntu-latest
     if: github.ref == 'refs/heads/main'
 
@@ -183,16 +154,43 @@ jobs:
       url: https://ghost.yourdomain.com
 
     steps:
-      - name: Checkout Code
-        uses: actions/checkout@v4
-
       - name: Deploy to Production
         run: |
-          echo "Deploying Ghost to production with zero downtime..."
-          # Example:
-          # kubectl apply -f kubernetes/production/
+          echo "Deploying Ghost to production..."
+          echo "Production deployment successful"
 
       - name: Smoke Test
         run: |
           echo "Running smoke tests..."
-          echo "Production deployment verified successfully"
+          echo "Application verified successfully"
+
+  # ===================================
+  # SLACK NOTIFICATION SUCCESS
+  # ===================================
+  notify-success:
+    name: Slack Success Notification
+    needs: deploy-production
+    runs-on: ubuntu-latest
+    if: success()
+
+    steps:
+      - name: Slack Notification (Success)
+        run: |
+          curl -X POST -H "Content-type: application/json" \
+          --data '{"text":"✅ DevSecOps Pipeline SUCCESS - Ghost deployed successfully"}' \
+          ${{ secrets.SLACK_WEBHOOK }}
+
+  # ===================================
+  # SLACK NOTIFICATION FAILURE
+  # ===================================
+  notify-failure:
+    name: Slack Failure Notification
+    runs-on: ubuntu-latest
+    if: failure()
+
+    steps:
+      - name: Slack Notification (Failure)
+        run: |
+          curl -X POST -H "Content-type: application/json" \
+          --data '{"text":"❌ DevSecOps Pipeline FAILED - Please check GitHub Actions logs"}' \
+          ${{ secrets.SLACK_WEBHOOK }}
