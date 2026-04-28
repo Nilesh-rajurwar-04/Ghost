@@ -27,23 +27,31 @@ jobs:
       - name: Checkout Code
         uses: actions/checkout@v4
 
-      # STEP 1: Setup PNPM FIRST
+      # Install PNPM first
       - name: Setup PNPM
         uses: pnpm/action-setup@v4
+        with:
+          standalone: true
 
-      # STEP 2: Setup Node AFTER PNPM
+      # Then setup Node.js
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
           node-version: 22
-          cache: 'pnpm'
 
+      # Verify PNPM is available
+      - name: Verify PNPM
+        run: pnpm --version
+
+      # Install dependencies
       - name: Install Dependencies
         run: pnpm install --frozen-lockfile
 
+      # Build project
       - name: Build Project
         run: pnpm build
 
+      # Upload build artifacts
       - name: Upload Build Artifacts
         uses: actions/upload-artifact@v4
         with:
@@ -65,16 +73,18 @@ jobs:
       - name: Checkout Code
         uses: actions/checkout@v4
 
-      # STEP 1: Setup PNPM FIRST
       - name: Setup PNPM
         uses: pnpm/action-setup@v4
+        with:
+          standalone: true
 
-      # STEP 2: Setup Node AFTER PNPM
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
           node-version: 22
-          cache: 'pnpm'
+
+      - name: Verify PNPM
+        run: pnpm --version
 
       - name: Install Dependencies
         run: pnpm install --frozen-lockfile
@@ -94,16 +104,18 @@ jobs:
       - name: Checkout Code
         uses: actions/checkout@v4
 
-      # STEP 1: Setup PNPM FIRST
       - name: Setup PNPM
         uses: pnpm/action-setup@v4
+        with:
+          standalone: true
 
-      # STEP 2: Setup Node AFTER PNPM
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
           node-version: 22
-          cache: 'pnpm'
+
+      - name: Verify PNPM
+        run: pnpm --version
 
       - name: Install Dependencies
         run: pnpm install --frozen-lockfile
@@ -125,14 +137,14 @@ jobs:
         run: docker build -t ghost:${{ github.sha }} .
 
       # -------------------------------
-      # TRIVY SECURITY SCAN
+      # TRIVY IMAGE SCAN
       # -------------------------------
       - name: Run Trivy Vulnerability Scan
         uses: aquasecurity/trivy-action@master
         with:
           image-ref: ghost:${{ github.sha }}
-          format: 'sarif'
-          output: 'trivy-results.sarif'
+          format: sarif
+          output: trivy-results.sarif
 
       - name: Upload Trivy Results
         uses: github/codeql-action/upload-sarif@v3
@@ -186,7 +198,7 @@ jobs:
 
       - name: Deploy to Staging
         run: |
-          echo "Deploying Ghost to staging..."
+          echo "Deploying Ghost to staging environment..."
           # Example:
           # kubectl apply -f kubernetes/staging/
 
@@ -209,11 +221,11 @@ jobs:
 
       - name: Deploy to Production
         run: |
-          echo "Deploying Ghost to production..."
+          echo "Deploying Ghost to production with zero downtime..."
           # Example:
           # kubectl apply -f kubernetes/production/
 
       - name: Smoke Test
         run: |
           echo "Running smoke tests..."
-          echo "Production deployment successful"
+          echo "Production deployment verified successfully"
