@@ -5,14 +5,11 @@ WORKDIR /app
 # Install pnpm globally
 RUN npm install -g pnpm
 
-# Copy package manager files first
-COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
-
-# Install dependencies using pnpm
-RUN pnpm install --frozen-lockfile
-
-# Copy complete project source
+# Copy complete project first
 COPY . .
+
+# Install dependencies
+RUN pnpm install --frozen-lockfile
 
 # Build Ghost production
 RUN pnpm build:production
