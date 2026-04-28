@@ -1,37 +1,75 @@
-version: '3.8'
+version: "3.8"
 
 services:
+
+  # =====================================
+  # GHOST APPLICATION
+  # =====================================
   ghost:
-    build: .
+    build:
+      context: .
+      dockerfile: Dockerfile.production
+    container_name: ghost-app
     ports:
       - "2368:2368"
     environment:
       - url=http://localhost:2368
       - database__client=sqlite3
-      - database__connection__filename=/var/lib/ghost/content/data/ghost.db
-      - NODE_ENV=development
+      - database__connection__filename=/home/ghost/content/data/ghost.db
+      - NODE_ENV=production
     volumes:
-      - ghost-content:/var/lib/ghost/content
+      - ghost-content:/home/ghost/content
     networks:
       - ghost-network
+    depends_on:
+      - prometheus
 
+  # =====================================
+  # PROMETHEUS
+  # =====================================
   prometheus:
     image: prom/prometheus:latest
+    container_name: prometheus
     ports:
       - "9090:9090"
     volumes:
       - ./monitoring/prometheus.yml:/etc/prometheus/prometheus.yml
+      - ./monitoring/alert.rules.yml:/etc/prometheus/alert.rules.yml
+    command:
+      - "--config.file=/etc/prometheus/prometheus.yml"
     networks:
       - ghost-network
 
+  # =====================================
+  # GRAFANA
+  # =====================================
   grafana:
     image: grafana/grafana:latest
+    container_name: grafana
     ports:
       - "3000:3000"
     environment:
+      - GF_SECURITY_ADMIN_USER=admin
       - GF_SECURITY_ADMIN_PASSWORD=admin
     volumes:
       - grafana-data:/var/lib/grafana
+    networks:
+      - ghost-network
+    depends_on:
+      - prometheus
+
+  # =====================================
+  # ALERTMANAGER
+  # =====================================
+  alertmanager:
+    image: prom/alertmanager:latest
+    container_name: alertmanager
+    ports:
+      - "9093:9093"
+    volumes:
+      - ./monitoring/alertmanager.yml:/etc/alertmanager/alertmanager.yml
+    command:
+      - "--config.file=/etc/alertmanager/alertmanager.yml"
     networks:
       - ghost-network
 
