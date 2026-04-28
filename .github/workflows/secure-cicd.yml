@@ -8,6 +8,7 @@ on:
       - 'feature/**'
       - 'release/**'
       - 'hotfix/**'
+
   pull_request:
     branches:
       - main
@@ -15,9 +16,9 @@ on:
 
 jobs:
 
-  # =========================
+  # ===================================
   # BUILD STAGE
-  # =========================
+  # ===================================
   build:
     name: Build Stage
     runs-on: ubuntu-latest
@@ -26,28 +27,16 @@ jobs:
       - name: Checkout Code
         uses: actions/checkout@v4
 
+      # STEP 1: Setup PNPM FIRST
+      - name: Setup PNPM
+        uses: pnpm/action-setup@v4
+
+      # STEP 2: Setup Node AFTER PNPM
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: 18
-
-      - name: Setup PNPM
-        uses: pnpm/action-setup@v4
-        with:
-          version: 10
-
-      - name: Get PNPM Store Directory
-        shell: bash
-        run: |
-          echo "STORE_PATH=$(pnpm store path --silent)" >> $GITHUB_ENV
-
-      - name: Setup PNPM Cache
-        uses: actions/cache@v4
-        with:
-          path: ${{ env.STORE_PATH }}
-          key: ${{ runner.os }}-pnpm-store-${{ hashFiles('**/pnpm-lock.yaml') }}
-          restore-keys: |
-            ${{ runner.os }}-pnpm-store-
+          node-version: 22
+          cache: 'pnpm'
 
       - name: Install Dependencies
         run: pnpm install --frozen-lockfile
@@ -64,9 +53,9 @@ jobs:
             apps
             ghost
 
-  # =========================
+  # ===================================
   # TEST STAGE
-  # =========================
+  # ===================================
   test:
     name: Test Stage
     needs: build
@@ -76,15 +65,16 @@ jobs:
       - name: Checkout Code
         uses: actions/checkout@v4
 
+      # STEP 1: Setup PNPM FIRST
+      - name: Setup PNPM
+        uses: pnpm/action-setup@v4
+
+      # STEP 2: Setup Node AFTER PNPM
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: 18
-
-      - name: Setup PNPM
-        uses: pnpm/action-setup@v4
-        with:
-          version: 10
+          node-version: 22
+          cache: 'pnpm'
 
       - name: Install Dependencies
         run: pnpm install --frozen-lockfile
@@ -92,9 +82,9 @@ jobs:
       - name: Run Tests
         run: pnpm test
 
-  # =========================
+  # ===================================
   # SECURITY SCAN STAGE
-  # =========================
+  # ===================================
   security-scan:
     name: Security Scan
     needs: test
@@ -104,22 +94,23 @@ jobs:
       - name: Checkout Code
         uses: actions/checkout@v4
 
+      # STEP 1: Setup PNPM FIRST
+      - name: Setup PNPM
+        uses: pnpm/action-setup@v4
+
+      # STEP 2: Setup Node AFTER PNPM
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: 18
-
-      - name: Setup PNPM
-        uses: pnpm/action-setup@v4
-        with:
-          version: 10
+          node-version: 22
+          cache: 'pnpm'
 
       - name: Install Dependencies
         run: pnpm install --frozen-lockfile
 
-      # -------------------------
+      # -------------------------------
       # SNYK DEPENDENCY SCAN
-      # -------------------------
+      # -------------------------------
       - name: Run Snyk Security Scan
         uses: snyk/actions/node@master
         env:
@@ -127,21 +118,21 @@ jobs:
         with:
           args: --severity-threshold=high
 
-      # -------------------------
-      # DOCKER IMAGE BUILD
-      # -------------------------
+      # -------------------------------
+      # BUILD DOCKER IMAGE
+      # -------------------------------
       - name: Build Docker Image
         run: docker build -t ghost:${{ github.sha }} .
 
-      # -------------------------
-      # TRIVY IMAGE SCAN
-      # -------------------------
+      # -------------------------------
+      # TRIVY SECURITY SCAN
+      # -------------------------------
       - name: Run Trivy Vulnerability Scan
         uses: aquasecurity/trivy-action@master
         with:
           image-ref: ghost:${{ github.sha }}
-          format: sarif
-          output: trivy-results.sarif
+          format: 'sarif'
+          output: 'trivy-results.sarif'
 
       - name: Upload Trivy Results
         uses: github/codeql-action/upload-sarif@v3
@@ -149,9 +140,9 @@ jobs:
         with:
           sarif_file: trivy-results.sarif
 
-  # =========================
+  # ===================================
   # DOCKER BUILD + PUSH
-  # =========================
+  # ===================================
   docker-build:
     name: Docker Build and Push
     needs: security-scan
@@ -180,9 +171,9 @@ jobs:
             ${{ secrets.DOCKER_USERNAME }}/ghost:latest
             ${{ secrets.DOCKER_USERNAME }}/ghost:${{ github.sha }}
 
-  # =========================
+  # ===================================
   # DEPLOY TO STAGING
-  # =========================
+  # ===================================
   deploy-staging:
     name: Deploy to Staging
     needs: docker-build
@@ -195,13 +186,13 @@ jobs:
 
       - name: Deploy to Staging
         run: |
-          echo "Deploying Ghost to staging environment..."
+          echo "Deploying Ghost to staging..."
           # Example:
           # kubectl apply -f kubernetes/staging/
 
-  # =========================
+  # ===================================
   # DEPLOY TO PRODUCTION
-  # =========================
+  # ===================================
   deploy-production:
     name: Deploy to Production
     needs: docker-build
@@ -218,11 +209,11 @@ jobs:
 
       - name: Deploy to Production
         run: |
-          echo "Deploying Ghost to production with zero downtime..."
+          echo "Deploying Ghost to production..."
           # Example:
           # kubectl apply -f kubernetes/production/
 
       - name: Smoke Test
         run: |
-          echo "Running smoke test..."
-          echo "Production deployment verified successfully"
+          echo "Running smoke tests..."
+          echo "Production deployment successful"
