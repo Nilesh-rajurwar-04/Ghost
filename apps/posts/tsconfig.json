@@ -1,37 +1,51 @@
 {
-    "compilerOptions": {
-        "target": "ESNext",
-        "lib": ["DOM", "DOM.Iterable", "ESNext"],
-        "module": "ESNext",
-        "skipLibCheck": true,
-        "types": ["vite/client", "vitest/globals", "@testing-library/jest-dom/vitest"],
+  "compilerOptions": {
+    "target": "ESNext",
+    "lib": [
+      "DOM",
+      "DOM.Iterable",
+      "ESNext"
+    ],
+    "module": "ESNext",
+    "skipLibCheck": true,
+    "types": [
+      "vite/client",
+      "vitest/globals",
+      "@testing-library/jest-dom/vitest"
+    ],
 
-        /* Bundler mode */
-        "moduleResolution": "bundler",
-        "allowImportingTsExtensions": true,
-        "resolveJsonModule": true,
-        "isolatedModules": true,
-        "noEmit": true,
-        "jsx": "react-jsx",
+    /* Bundler mode */
+    "moduleResolution": "bundler",
+    "allowImportingTsExtensions": true,
+    "resolveJsonModule": true,
+    "isolatedModules": true,
+    "noEmit": true,
+    "jsx": "react-jsx",
 
-        /* Linting */
-        "strict": true,
-        "noUnusedLocals": true,
-        "noUnusedParameters": true,
-        "erasableSyntaxOnly": true,
-        "noFallthroughCasesInSwitch": true,
+    /* Linting */
+    "strict": true,
+    "noUnusedLocals": true,
+    "noUnusedParameters": true,
+    "erasableSyntaxOnly": true,
+    "noFallthroughCasesInSwitch": true,
 
-        /* Path aliases */
-        "ignoreDeprecations": "5.5",
-        "baseUrl": "./src",
-        "paths": {
-            "@src/*": ["*"],
-            "@assets/*": ["assets/*"],
-            "@components/*": ["components/*"],
-            "@hooks/*": ["hooks/*"],
-            "@utils/*": ["utils/*"],
-            "@views/*": ["views/*"]
-        }
-    },
-    "include": ["src", "test"]
+    /* TypeScript compatibility fix */
+    "ignoreDeprecations": "5.0",
+
+    /* Path aliases */
+    "baseUrl": "./src",
+    "paths": {
+      "@src/*": ["*"],
+      "@assets/*": ["assets/*"],
+      "@components/*": ["components/*"],
+      "@hooks/*": ["hooks/*"],
+      "@utils/*": ["utils/*"],
+      "@views/*": ["views/*"]
+    }
+  },
+
+  "include": [
+    "src",
+    "test"
+  ]
 }
