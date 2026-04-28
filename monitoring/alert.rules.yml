@@ -1,0 +1,21 @@
+groups:
+  - name: ghost-alerts
+    rules:
+
+      - alert: GhostDown
+        expr: up{job="ghost"} == 0
+        for: 1m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Ghost application is down"
+          description: "Ghost service has been unreachable for more than 1 minute."
+
+      - alert: HighCPUUsage
+        expr: process_cpu_seconds_total > 80
+        for: 2m
+        labels:
+          severity: warning
+        annotations:
+          summary: "High CPU usage detected"
+          description: "CPU usage is above threshold."
