@@ -26,13 +26,13 @@ jobs:
       - name: Checkout Code
         uses: actions/checkout@v4
 
-      # Ghost monorepo requires Node 22 for build
+      # Ghost monorepo requires Node 22
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
           node-version: 22
-          cache: "pnpm"
 
+      # Install PNPM properly
       - name: Setup PNPM
         uses: pnpm/action-setup@v4
         with:
@@ -42,12 +42,12 @@ jobs:
         run: corepack enable
 
       - name: Install Dependencies
-        run: pnpm install --frozen-lockfile
+        run: pnpm install --no-frozen-lockfile
 
       - name: Build Ghost Production
         env:
           NODE_OPTIONS: "--max-old-space-size=4096"
-        run: pnpm build:production
+        run: pnpm build
 
       - name: Upload Build Artifacts
         uses: actions/upload-artifact@v4
@@ -74,7 +74,6 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: 22
-          cache: "pnpm"
 
       - name: Setup PNPM
         uses: pnpm/action-setup@v4
@@ -85,7 +84,7 @@ jobs:
         run: corepack enable
 
       - name: Install Dependencies
-        run: pnpm install --frozen-lockfile
+        run: pnpm install --no-frozen-lockfile
 
       - name: Test Validation
         run: echo "Unit tests skipped for DevSecOps project demo"
@@ -117,7 +116,6 @@ jobs:
           args: --severity-threshold=high
 
       # Optional Docker validation build
-      # Runtime Kubernetes uses official ghost:5-alpine image
       - name: Docker Validation Build
         run: |
           docker build \
