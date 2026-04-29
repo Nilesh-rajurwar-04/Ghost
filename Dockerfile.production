@@ -50,11 +50,11 @@ ENV CI=true
 
 # -----------------------------------------
 # Install production dependencies
-# Skip husky scripts but build sqlite3 manually
+# Skip husky scripts but rebuild sqlite3 manually
 # -----------------------------------------
 RUN --mount=type=cache,target=/root/.local/share/pnpm/store,id=pnpm-store \
     HUSKY=0 CI=true pnpm install --prod --prefer-offline --ignore-scripts && \
-    cd node_modules/sqlite3 && npm run install
+    pnpm rebuild sqlite3
 
 # -----------------------------------------
 # Create required folders safely
