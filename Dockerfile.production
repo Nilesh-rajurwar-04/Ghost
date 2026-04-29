@@ -21,7 +21,9 @@ RUN apt-get update && \
     libjemalloc2 \
     fontconfig \
     build-essential \
-    python3 && \
+    python3 \
+    make \
+    g++ && \
     rm -rf /var/lib/apt/lists/*
 
 # -----------------------------------------
@@ -48,9 +50,11 @@ ENV CI=true
 
 # -----------------------------------------
 # Install production dependencies safely
+# IMPORTANT: sqlite3 bindings must build
 # -----------------------------------------
 RUN --mount=type=cache,target=/root/.local/share/pnpm/store,id=pnpm-store \
-    pnpm install --prod --prefer-offline --ignore-scripts
+    pnpm install --prod --prefer-offline && \
+    cd node_modules/sqlite3 && npm run install
 
 # -----------------------------------------
 # Create required folders safely
