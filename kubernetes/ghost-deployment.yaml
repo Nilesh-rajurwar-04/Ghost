@@ -4,7 +4,6 @@ metadata:
   name: ghost
 
 ---
-
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -12,7 +11,6 @@ metadata:
   namespace: ghost
 spec:
   replicas: 3
-
   selector:
     matchLabels:
       app: ghost
@@ -25,9 +23,7 @@ spec:
     spec:
       containers:
         - name: ghost
-
           image: nileshrajurwar9403/ghost-app:latest
-
           imagePullPolicy: Always
 
           ports:
@@ -35,7 +31,7 @@ spec:
 
           env:
             - name: url
-              value: "http://ghost.yourdomain.com"
+              value: "https://ghost.yourdomain.com"
 
             - name: NODE_ENV
               value: "production"
@@ -57,20 +53,37 @@ spec:
 
           livenessProbe:
             httpGet:
-              path: /
+              path: /ghost/
               port: 2368
             initialDelaySeconds: 30
             periodSeconds: 10
 
           readinessProbe:
             httpGet:
-              path: /
+              path: /ghost/
               port: 2368
             initialDelaySeconds: 20
-            periodSeconds: 5
+            periodSeconds: 10
 
 ---
+apiVersion: v1
+kind: Service
+metadata:
+  name: ghost-service
+  namespace: ghost
 
+spec:
+  type: LoadBalancer
+
+  selector:
+    app: ghost
+
+  ports:
+    - protocol: TCP
+      port: 80
+      targetPort: 2368
+
+---
 apiVersion: autoscaling/v2
 kind: HorizontalPodAutoscaler
 metadata:
