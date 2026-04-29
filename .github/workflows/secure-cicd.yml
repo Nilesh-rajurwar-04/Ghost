@@ -8,21 +8,18 @@ on:
       - 'feature/**'
       - 'release/**'
       - 'hotfix/**'
-
   pull_request:
     branches:
       - main
       - develop
 
 jobs:
-
   # ===================================
   # BUILD STAGE
   # ===================================
   build:
     name: Build Stage
     runs-on: ubuntu-latest
-
     steps:
       - name: Checkout Code
         uses: actions/checkout@v4
@@ -30,30 +27,28 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: 22 # Updated to match Ghost requirement
 
-      - name: Setup PNPM
+      - name: Install PNPM Globally
         run: npm install -g pnpm
-
-      - name: Verify Environment
-        run: |
-          node --version
-          npm --version
-          pnpm --version
 
       - name: Install Dependencies
         run: pnpm install --frozen-lockfile
 
       - name: Build Ghost Production
-        run: pnpm build:production
+        # FIX: Increased memory to 4GB to prevent Exit Code 130 crash
+        env:
+          NODE_OPTIONS: "--max-old-space-size=4096"
+        run: pnpm build
 
       - name: Upload Build Artifacts
         uses: actions/upload-artifact@v4
         with:
           name: build-artifacts
           path: |
-            ghost/core
-            apps/admin/dist
+            dist
+            apps
+            ghost
 
   # ===================================
   # TEST STAGE
@@ -62,7 +57,6 @@ jobs:
     name: Test Stage
     needs: build
     runs-on: ubuntu-latest
-
     steps:
       - name: Checkout Code
         uses: actions/checkout@v4
@@ -70,9 +64,9 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: 22
 
-      - name: Setup PNPM
+      - name: Install PNPM Globally
         run: npm install -g pnpm
 
       - name: Install Dependencies
@@ -88,7 +82,6 @@ jobs:
     name: Security Scan
     needs: test
     runs-on: ubuntu-latest
-
     steps:
       - name: Checkout Code
         uses: actions/checkout@v4
@@ -99,18 +92,20 @@ jobs:
           username: ${{ secrets.DOCKER_USERNAME }}
           password: ${{ secrets.DOCKER_PASSWORD }}
 
-      # ===================================
-      # BUILD IMAGE USING Dockerfile.production
-      # ===================================
+      # SNYK SCAN (Added for full DevSecOps compliance)
+      - name: Run Snyk Security Scan
+        uses: snyk/actions/node@master
+        env:
+          SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
+        with:
+          args: --severity-threshold=high
+
       - name: Build Docker Image
         run: |
           docker build \
           -t ${{ secrets.DOCKER_USERNAME }}/ghost-app:latest \
           -f Dockerfile.production .
 
-      # ===================================
-      # TRIVY SECURITY SCAN
-      # ===================================
       - name: Trivy Scan
         uses: aquasecurity/trivy-action@master
         with:
@@ -118,79 +113,57 @@ jobs:
           format: 'table'
           exit-code: '0'
 
-      # ===================================
-      # PUSH IMAGE TO DOCKER HUB
-      # ===================================
       - name: Push Docker Image
+        if: github.event_name == 'push'
         run: |
           docker push ${{ secrets.DOCKER_USERNAME }}/ghost-app:latest
 
   # ===================================
-  # DEPLOY TO STAGING
+  # DEPLOY STAGES
   # ===================================
   deploy-staging:
     name: Deploy to Staging
     needs: security-scan
     runs-on: ubuntu-latest
     if: github.ref == 'refs/heads/develop'
-
     steps:
       - name: Deploy to Staging
-        run: |
-          echo "Deploying Ghost to staging environment..."
-          echo "Staging deployment successful"
+        run: echo "Staging deployment successful"
 
-  # ===================================
-  # DEPLOY TO PRODUCTION
-  # ===================================
   deploy-production:
     name: Deploy to Production
     needs: security-scan
     runs-on: ubuntu-latest
     if: github.ref == 'refs/heads/main'
-
     environment:
       name: production
       url: https://ghost.yourdomain.com
-
     steps:
       - name: Deploy to Production
-        run: |
-          echo "Deploying Ghost to production..."
-          echo "Production deployment successful"
-
-      - name: Smoke Test
-        run: |
-          echo "Running smoke tests..."
-          echo "Application verified successfully"
+        run: echo "Production deployment successful"
 
   # ===================================
-  # SLACK NOTIFICATION SUCCESS
+  # NOTIFICATIONS
   # ===================================
   notify-success:
-    name: Slack Success Notification
-    needs: deploy-production
+    name: Success Notification
+    needs: [deploy-production, deploy-staging]
     runs-on: ubuntu-latest
     if: success()
-
     steps:
-      - name: Slack Notification (Success)
+      - name: Slack Notification
         run: |
           curl -X POST -H "Content-type: application/json" \
-          --data '{"text":"✅ DevSecOps Pipeline SUCCESS - Ghost deployed successfully"}' \
+          --data '{"text":"✅ DevSecOps Pipeline SUCCESS - Ghost deployed"}' \
           ${{ secrets.SLACK_WEBHOOK }}
 
-  # ===================================
-  # SLACK NOTIFICATION FAILURE
-  # ===================================
   notify-failure:
-    name: Slack Failure Notification
+    name: Failure Notification
     runs-on: ubuntu-latest
     if: failure()
-
     steps:
-      - name: Slack Notification (Failure)
+      - name: Slack Notification
         run: |
           curl -X POST -H "Content-type: application/json" \
-          --data '{"text":"❌ DevSecOps Pipeline FAILED - Please check GitHub Actions logs"}' \
+          --data '{"text":"❌ DevSecOps Pipeline FAILED - Check logs"}' \
           ${{ secrets.SLACK_WEBHOOK }}
