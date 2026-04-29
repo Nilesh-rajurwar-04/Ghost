@@ -1,3 +1,5 @@
+# File: kubernetes/ghost-deployment.yaml
+
 apiVersion: v1
 kind: Namespace
 metadata:
@@ -7,10 +9,12 @@ metadata:
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: ghost
+  name: ghost-app
   namespace: ghost
+
 spec:
-  replicas: 3
+  replicas: 1
+
   selector:
     matchLabels:
       app: ghost
@@ -23,7 +27,7 @@ spec:
     spec:
       containers:
         - name: ghost
-          image: nileshrajurwar9403/ghost-app:latest
+          image: ghost:5-alpine
           imagePullPolicy: Always
 
           ports:
@@ -31,16 +35,10 @@ spec:
 
           env:
             - name: url
-              value: "https://ghost.yourdomain.com"
+              value: "http://localhost:30007"
 
             - name: NODE_ENV
-              value: "production"
-
-            - name: database__client
-              value: "sqlite3"
-
-            - name: database__connection__filename
-              value: "/home/ghost/content/data/ghost.db"
+              value: "development"
 
           resources:
             requests:
@@ -53,16 +51,16 @@ spec:
 
           livenessProbe:
             httpGet:
-              path: /ghost/
+              path: /
               port: 2368
-            initialDelaySeconds: 30
-            periodSeconds: 10
+            initialDelaySeconds: 60
+            periodSeconds: 15
 
           readinessProbe:
             httpGet:
-              path: /ghost/
+              path: /
               port: 2368
-            initialDelaySeconds: 20
+            initialDelaySeconds: 40
             periodSeconds: 10
 
 ---
@@ -73,15 +71,16 @@ metadata:
   namespace: ghost
 
 spec:
-  type: LoadBalancer
+  type: NodePort
 
   selector:
     app: ghost
 
   ports:
     - protocol: TCP
-      port: 80
+      port: 2368
       targetPort: 2368
+      nodePort: 30007
 
 ---
 apiVersion: autoscaling/v2
@@ -94,10 +93,10 @@ spec:
   scaleTargetRef:
     apiVersion: apps/v1
     kind: Deployment
-    name: ghost
+    name: ghost-app
 
-  minReplicas: 2
-  maxReplicas: 5
+  minReplicas: 1
+  maxReplicas: 3
 
   metrics:
     - type: Resource

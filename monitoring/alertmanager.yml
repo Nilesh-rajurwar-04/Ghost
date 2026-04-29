@@ -2,7 +2,16 @@ global:
   resolve_timeout: 5m
 
 route:
-  receiver: "default"
+  receiver: "slack-notifications"
+  group_wait: 10s
+  group_interval: 30s
+  repeat_interval: 1h
 
 receivers:
-  - name: "default"
+  - name: "slack-notifications"
+    slack_configs:
+      - api_url: "YOUR_SLACK_WEBHOOK_URL"
+        channel: "#alerts"
+        send_resolved: true
+        title: "Ghost DevSecOps Alert"
+        text: "{{ range .Alerts }}{{ .Annotations.summary }}{{ end }}"

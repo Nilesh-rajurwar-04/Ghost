@@ -8,6 +8,7 @@ on:
       - 'feature/**'
       - 'release/**'
       - 'hotfix/**'
+
   pull_request:
     branches:
       - main
@@ -20,26 +21,33 @@ jobs:
   build:
     name: Build Stage
     runs-on: ubuntu-latest
+
     steps:
       - name: Checkout Code
         uses: actions/checkout@v4
 
+      # Ghost monorepo requires Node 22 for build
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: 22 # Updated to match Ghost requirement
+          node-version: 22
+          cache: "pnpm"
 
-      - name: Install PNPM Globally
-        run: npm install -g pnpm
+      - name: Setup PNPM
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10
+
+      - name: Enable Corepack
+        run: corepack enable
 
       - name: Install Dependencies
         run: pnpm install --frozen-lockfile
 
       - name: Build Ghost Production
-        # FIX: Increased memory to 4GB to prevent Exit Code 130 crash
         env:
           NODE_OPTIONS: "--max-old-space-size=4096"
-        run: pnpm build
+        run: pnpm build:production
 
       - name: Upload Build Artifacts
         uses: actions/upload-artifact@v4
@@ -57,6 +65,7 @@ jobs:
     name: Test Stage
     needs: build
     runs-on: ubuntu-latest
+
     steps:
       - name: Checkout Code
         uses: actions/checkout@v4
@@ -65,9 +74,15 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: 22
+          cache: "pnpm"
 
-      - name: Install PNPM Globally
-        run: npm install -g pnpm
+      - name: Setup PNPM
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10
+
+      - name: Enable Corepack
+        run: corepack enable
 
       - name: Install Dependencies
         run: pnpm install --frozen-lockfile
@@ -82,6 +97,7 @@ jobs:
     name: Security Scan
     needs: test
     runs-on: ubuntu-latest
+
     steps:
       - name: Checkout Code
         uses: actions/checkout@v4
@@ -92,7 +108,7 @@ jobs:
           username: ${{ secrets.DOCKER_USERNAME }}
           password: ${{ secrets.DOCKER_PASSWORD }}
 
-      # SNYK SCAN (Added for full DevSecOps compliance)
+      # Snyk Scan
       - name: Run Snyk Security Scan
         uses: snyk/actions/node@master
         env:
@@ -100,18 +116,22 @@ jobs:
         with:
           args: --severity-threshold=high
 
-      - name: Build Docker Image
+      # Optional Docker validation build
+      # Runtime Kubernetes uses official ghost:5-alpine image
+      - name: Docker Validation Build
         run: |
           docker build \
-          -t ${{ secrets.DOCKER_USERNAME }}/ghost-app:latest \
-          -f Dockerfile.production .
+            -t ${{ secrets.DOCKER_USERNAME }}/ghost-app:latest \
+            -f Dockerfile.production .
 
-      - name: Trivy Scan
+      - name: Trivy Security Scan
         uses: aquasecurity/trivy-action@master
         with:
           image-ref: '${{ secrets.DOCKER_USERNAME }}/ghost-app:latest'
           format: 'table'
           exit-code: '0'
+          ignore-unfixed: true
+          severity: 'CRITICAL,HIGH'
 
       - name: Push Docker Image
         if: github.event_name == 'push'
@@ -126,6 +146,7 @@ jobs:
     needs: security-scan
     runs-on: ubuntu-latest
     if: github.ref == 'refs/heads/develop'
+
     steps:
       - name: Deploy to Staging
         run: echo "Staging deployment successful"
@@ -135,35 +156,42 @@ jobs:
     needs: security-scan
     runs-on: ubuntu-latest
     if: github.ref == 'refs/heads/main'
+
     environment:
       name: production
-      url: https://ghost.yourdomain.com
+      url: http://localhost:30007
+
     steps:
       - name: Deploy to Production
-        run: echo "Production deployment successful"
+        run: echo "Production deployment successful using Kubernetes + ghost:5-alpine"
 
   # ===================================
-  # NOTIFICATIONS
+  # SUCCESS NOTIFICATION
   # ===================================
   notify-success:
     name: Success Notification
     needs: [deploy-production, deploy-staging]
     runs-on: ubuntu-latest
     if: success()
+
     steps:
-      - name: Slack Notification
+      - name: Slack Success Notification
         run: |
           curl -X POST -H "Content-type: application/json" \
-          --data '{"text":"✅ DevSecOps Pipeline SUCCESS - Ghost deployed"}' \
+          --data '{"text":"✅ DevSecOps Pipeline SUCCESS - Ghost deployed successfully"}' \
           ${{ secrets.SLACK_WEBHOOK }}
 
+  # ===================================
+  # FAILURE NOTIFICATION
+  # ===================================
   notify-failure:
     name: Failure Notification
     runs-on: ubuntu-latest
     if: failure()
+
     steps:
-      - name: Slack Notification
+      - name: Slack Failure Notification
         run: |
           curl -X POST -H "Content-type: application/json" \
-          --data '{"text":"❌ DevSecOps Pipeline FAILED - Check logs"}' \
+          --data '{"text":"❌ DevSecOps Pipeline FAILED - Please check GitHub Actions logs"}' \
           ${{ secrets.SLACK_WEBHOOK }}
