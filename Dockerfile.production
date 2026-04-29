@@ -49,11 +49,11 @@ ENV HUSKY=0
 ENV CI=true
 
 # -----------------------------------------
-# Install production dependencies safely
-# IMPORTANT: sqlite3 bindings must build
+# Install production dependencies
+# Skip husky scripts but build sqlite3 manually
 # -----------------------------------------
 RUN --mount=type=cache,target=/root/.local/share/pnpm/store,id=pnpm-store \
-    pnpm install --prod --prefer-offline && \
+    HUSKY=0 CI=true pnpm install --prod --prefer-offline --ignore-scripts && \
     cd node_modules/sqlite3 && npm run install
 
 # -----------------------------------------
