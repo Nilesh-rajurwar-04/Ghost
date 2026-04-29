@@ -27,21 +27,19 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          # Match the version Ghost requested in your logs
           node-version: '22.13.1'
 
-      - name: Install PNPM via NPM
-        # Standard setup-node cache often fails if PNPM isn't in PATH yet.
-        # This global install ensures the executable is found immediately.
+      - name: Install PNPM Globally
+        # Using npm to install pnpm is the most stable way for this specific monorepo
         run: npm install -g pnpm@10.33.0
 
       - name: Install Dependencies
         run: pnpm install --frozen-lockfile
 
       - name: Build Ghost Production
-        # FIX: Increased memory to 4GB (4096) to prevent Exit Code 130 crash
+        # INCREASED MEMORY: Set to 8192 (8GB) to prevent Exit Code 130 during ghost-admin:build
         env:
-          NODE_OPTIONS: "--max-old-space-size=4096"
+          NODE_OPTIONS: "--max-old-space-size=8192"
         run: pnpm build
 
       - name: Upload Build Artifacts
@@ -97,7 +95,7 @@ jobs:
       - name: Install PNPM
         run: npm install -g pnpm@10.33.0
 
-      # SNYK SCAN (Vulnerability scan for dependencies)
+      # SNYK SCAN
       - name: Run Snyk Security Scan
         uses: snyk/actions/node@master
         env:
@@ -117,7 +115,7 @@ jobs:
           -t ${{ secrets.DOCKER_USERNAME }}/ghost-app:latest \
           -f Dockerfile.production .
 
-      # TRIVY SCAN (Vulnerability scan for the Docker image)
+      # TRIVY SCAN
       - name: Trivy Scan
         uses: aquasecurity/trivy-action@master
         with:
@@ -130,7 +128,7 @@ jobs:
         run: docker push ${{ secrets.DOCKER_USERNAME }}/ghost-app:latest
 
   # ===================================
-  # DEPLOYMENT
+  # DEPLOYMENT & NOTIFICATIONS
   # ===================================
   deploy-staging:
     name: Deploy to Staging
@@ -152,9 +150,6 @@ jobs:
       - name: Deploy
         run: echo "Deploying Ghost to production..."
 
-  # ===================================
-  # NOTIFICATIONS
-  # ===================================
   notify-success:
     name: Slack Success Notification
     needs: [deploy-production, deploy-staging]
