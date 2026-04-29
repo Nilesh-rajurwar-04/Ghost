@@ -27,19 +27,19 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          # Ghost requires Node 22.13.1+ as per your error logs
+          # Match the version Ghost requested in your logs
           node-version: '22.13.1'
 
       - name: Install PNPM via NPM
-        # Standard actions/setup-node cache often fails if PNPM isn't in PATH yet.
-        # This global install ensures the executable is found.
+        # Standard setup-node cache often fails if PNPM isn't in PATH yet.
+        # This global install ensures the executable is found immediately.
         run: npm install -g pnpm@10.33.0
 
       - name: Install Dependencies
         run: pnpm install --frozen-lockfile
 
       - name: Build Ghost Production
-        # Ghost's monorepo needs more RAM (4GB) to prevent Exit Code 130
+        # FIX: Increased memory to 4GB (4096) to prevent Exit Code 130 crash
         env:
           NODE_OPTIONS: "--max-old-space-size=4096"
         run: pnpm build
@@ -75,8 +75,8 @@ jobs:
       - name: Install Dependencies
         run: pnpm install --frozen-lockfile
 
-      - name: Run Tests
-        run: echo "Skipping tests for demo purpose"
+      - name: Test Validation
+        run: echo "Unit tests skipped for DevSecOps project demo"
 
   # ===================================
   # SECURITY SCAN + DOCKER BUILD
