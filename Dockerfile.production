@@ -51,11 +51,11 @@ ENV CI=true
 
 # -----------------------------------------
 # Install production dependencies
-# Skip husky scripts + rebuild sqlite3
+# Skip husky + force sqlite3 native build
 # -----------------------------------------
 RUN --mount=type=cache,target=/root/.local/share/pnpm/store,id=pnpm-store \
     HUSKY=0 CI=true pnpm install --prod --prefer-offline --ignore-scripts && \
-    pnpm rebuild sqlite3
+    npm install sqlite3 --build-from-source
 
 # -----------------------------------------
 # Create required folders safely
@@ -77,7 +77,7 @@ USER ghost
 # -----------------------------------------
 ENV LD_PRELOAD=libjemalloc.so.2
 ENV database__client=sqlite3
-ENV database_connection_filename=/home/ghost/content/data/ghost.db
+ENV database__connection__filename=/home/ghost/content/data/ghost.db
 
 EXPOSE 2368
 
