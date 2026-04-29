@@ -5,7 +5,8 @@
 # Secure Production Dockerfile for Ghost
 # =========================================
 
-ARG NODE_VERSION=22.18.0
+# Use Node 20 LTS for sqlite3 compatibility
+ARG NODE_VERSION=20
 
 FROM node:${NODE_VERSION}-bookworm-slim
 
@@ -50,7 +51,7 @@ ENV CI=true
 
 # -----------------------------------------
 # Install production dependencies
-# Skip husky scripts but rebuild sqlite3 manually
+# Skip husky scripts + rebuild sqlite3
 # -----------------------------------------
 RUN --mount=type=cache,target=/root/.local/share/pnpm/store,id=pnpm-store \
     HUSKY=0 CI=true pnpm install --prod --prefer-offline --ignore-scripts && \
