@@ -8,7 +8,6 @@ on:
       - 'feature/**'
       - 'release/**'
       - 'hotfix/**'
-
   pull_request:
     branches:
       - main
@@ -21,30 +20,26 @@ jobs:
   build:
     name: Build Stage
     runs-on: ubuntu-latest
-
     steps:
       - name: Checkout Code
         uses: actions/checkout@v4
 
-      # Ghost monorepo requires Node 22
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: 22
+          # Ghost requires Node 22.13.1+ as per your error logs
+          node-version: '22.13.1'
 
-      # Install PNPM properly
-      - name: Setup PNPM
-        uses: pnpm/action-setup@v4
-        with:
-          version: 10
-
-      - name: Enable Corepack
-        run: corepack enable
+      - name: Install PNPM via NPM
+        # Standard actions/setup-node cache often fails if PNPM isn't in PATH yet.
+        # This global install ensures the executable is found.
+        run: npm install -g pnpm@10.33.0
 
       - name: Install Dependencies
-        run: pnpm install --no-frozen-lockfile
+        run: pnpm install --frozen-lockfile
 
       - name: Build Ghost Production
+        # Ghost's monorepo needs more RAM (4GB) to prevent Exit Code 130
         env:
           NODE_OPTIONS: "--max-old-space-size=4096"
         run: pnpm build
@@ -65,7 +60,6 @@ jobs:
     name: Test Stage
     needs: build
     runs-on: ubuntu-latest
-
     steps:
       - name: Checkout Code
         uses: actions/checkout@v4
@@ -73,21 +67,16 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: 22
+          node-version: '22.13.1'
 
-      - name: Setup PNPM
-        uses: pnpm/action-setup@v4
-        with:
-          version: 10
-
-      - name: Enable Corepack
-        run: corepack enable
+      - name: Install PNPM
+        run: npm install -g pnpm@10.33.0
 
       - name: Install Dependencies
-        run: pnpm install --no-frozen-lockfile
+        run: pnpm install --frozen-lockfile
 
-      - name: Test Validation
-        run: echo "Unit tests skipped for DevSecOps project demo"
+      - name: Run Tests
+        run: echo "Skipping tests for demo purpose"
 
   # ===================================
   # SECURITY SCAN + DOCKER BUILD
@@ -96,18 +85,19 @@ jobs:
     name: Security Scan
     needs: test
     runs-on: ubuntu-latest
-
     steps:
       - name: Checkout Code
         uses: actions/checkout@v4
 
-      - name: Docker Login
-        uses: docker/login-action@v3
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
         with:
-          username: ${{ secrets.DOCKER_USERNAME }}
-          password: ${{ secrets.DOCKER_PASSWORD }}
+          node-version: '22.13.1'
 
-      # Snyk Scan
+      - name: Install PNPM
+        run: npm install -g pnpm@10.33.0
+
+      # SNYK SCAN (Vulnerability scan for dependencies)
       - name: Run Snyk Security Scan
         uses: snyk/actions/node@master
         env:
@@ -115,81 +105,75 @@ jobs:
         with:
           args: --severity-threshold=high
 
-      # Optional Docker validation build
-      - name: Docker Validation Build
+      - name: Docker Login
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKER_USERNAME }}
+          password: ${{ secrets.DOCKER_PASSWORD }}
+
+      - name: Build Docker Image
         run: |
           docker build \
-            -t ${{ secrets.DOCKER_USERNAME }}/ghost-app:latest \
-            -f Dockerfile.production .
+          -t ${{ secrets.DOCKER_USERNAME }}/ghost-app:latest \
+          -f Dockerfile.production .
 
-      - name: Trivy Security Scan
+      # TRIVY SCAN (Vulnerability scan for the Docker image)
+      - name: Trivy Scan
         uses: aquasecurity/trivy-action@master
         with:
           image-ref: '${{ secrets.DOCKER_USERNAME }}/ghost-app:latest'
           format: 'table'
           exit-code: '0'
-          ignore-unfixed: true
-          severity: 'CRITICAL,HIGH'
 
       - name: Push Docker Image
         if: github.event_name == 'push'
-        run: |
-          docker push ${{ secrets.DOCKER_USERNAME }}/ghost-app:latest
+        run: docker push ${{ secrets.DOCKER_USERNAME }}/ghost-app:latest
 
   # ===================================
-  # DEPLOY STAGES
+  # DEPLOYMENT
   # ===================================
   deploy-staging:
     name: Deploy to Staging
     needs: security-scan
     runs-on: ubuntu-latest
     if: github.ref == 'refs/heads/develop'
-
     steps:
-      - name: Deploy to Staging
-        run: echo "Staging deployment successful"
+      - name: Deploy
+        run: echo "Deploying Ghost to staging..."
 
   deploy-production:
     name: Deploy to Production
     needs: security-scan
     runs-on: ubuntu-latest
     if: github.ref == 'refs/heads/main'
-
     environment:
       name: production
-      url: http://localhost:30007
-
     steps:
-      - name: Deploy to Production
-        run: echo "Production deployment successful using Kubernetes + ghost:5-alpine"
+      - name: Deploy
+        run: echo "Deploying Ghost to production..."
 
   # ===================================
-  # SUCCESS NOTIFICATION
+  # NOTIFICATIONS
   # ===================================
   notify-success:
-    name: Success Notification
+    name: Slack Success Notification
     needs: [deploy-production, deploy-staging]
     runs-on: ubuntu-latest
     if: success()
-
     steps:
-      - name: Slack Success Notification
+      - name: Notify
         run: |
           curl -X POST -H "Content-type: application/json" \
-          --data '{"text":"✅ DevSecOps Pipeline SUCCESS - Ghost deployed successfully"}' \
+          --data '{"text":"✅ DevSecOps Pipeline SUCCESS - Ghost deployed"}' \
           ${{ secrets.SLACK_WEBHOOK }}
 
-  # ===================================
-  # FAILURE NOTIFICATION
-  # ===================================
   notify-failure:
-    name: Failure Notification
+    name: Slack Failure Notification
     runs-on: ubuntu-latest
     if: failure()
-
     steps:
-      - name: Slack Failure Notification
+      - name: Notify
         run: |
           curl -X POST -H "Content-type: application/json" \
-          --data '{"text":"❌ DevSecOps Pipeline FAILED - Please check GitHub Actions logs"}' \
+          --data '{"text":"❌ DevSecOps Pipeline FAILED - Check GitHub logs"}' \
           ${{ secrets.SLACK_WEBHOOK }}
